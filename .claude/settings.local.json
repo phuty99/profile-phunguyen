@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell($env:PGPASSWORD = Read-Host \"Nhap postgres superuser password \\(mac dinh luc cai dat\\)\" -AsSecureString | ConvertFrom-SecureString -AsPlainText)",
+      "PowerShell(Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing)",
+      "PowerShell(Invoke-WebRequest -Uri http://localhost:5173 -UseBasicParsing)",
+      "PowerShell(curl.exe -s -X POST http://localhost:8000/auth/register -H \"Content-Type: application/json\" -d '{\"email\":\"phunv2017@gmail.com\",\"password\":\"Test1234!\"}' -w \"`nSTATUS:%{http_code}`n\")",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(Stop-Process *)"
+    ]
+  }
+}
