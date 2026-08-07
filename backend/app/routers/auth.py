@@ -42,7 +42,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
     db.commit()
 
-    return MessageResponse(message="Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.")
+    return MessageResponse(message="Registration successful. Please check your email to activate your account.")
 
 
 @router.post("/verify-email", response_model=TokenResponse)

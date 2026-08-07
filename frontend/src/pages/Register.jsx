@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const { register } = useAuth()
@@ -24,7 +25,7 @@ export default function Register() {
   if (message) {
     return (
       <div className="max-w-sm mx-auto mt-16 p-8 bg-white rounded-xl shadow-sm border border-earth-200 text-center">
-        <h1 className="text-2xl font-semibold text-earth-800 mb-4">Kiểm tra email của bạn</h1>
+        <h1 className="text-2xl font-semibold text-earth-800 mb-4">Check your email</h1>
         <p className="text-earth-700">{message}</p>
       </div>
     )
@@ -43,7 +44,7 @@ export default function Register() {
           className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
         />
         <input
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -51,6 +52,15 @@ export default function Register() {
           minLength={8}
           className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
         />
+        <label className="flex items-center gap-2 text-sm text-earth-700">
+          <input
+            type="checkbox"
+            checked={showPassword}
+            onChange={(e) => setShowPassword(e.target.checked)}
+            className="accent-fire-600"
+          />
+          Show password
+        </label>
         {error && <p className="text-fire-600 text-sm">{error}</p>}
         <button
           type="submit"
