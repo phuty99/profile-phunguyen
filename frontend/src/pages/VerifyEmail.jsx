@@ -29,13 +29,13 @@ export default function VerifyEmail() {
 
   return (
     <div className="max-w-sm mx-auto mt-16 p-8 bg-white rounded-xl shadow-sm border border-earth-200 text-center">
-      {status === 'verifying' && <p className="text-earth-700">Đang kích hoạt tài khoản...</p>}
-      {status === 'success' && <p className="text-earth-700">Kích hoạt thành công! Đang chuyển hướng...</p>}
+      {status === 'verifying' && <p className="text-earth-700">Activating your account...</p>}
+      {status === 'success' && <p className="text-earth-700">Account activated! Redirecting...</p>}
       {status === 'error' && (
         <>
-          <p className="text-fire-600 mb-4">Link không hợp lệ hoặc đã hết hạn.</p>
+          <p className="text-fire-600 mb-4">This link is invalid or has expired.</p>
           <Link to="/login" className="text-fire-600 font-medium">
-            Quay lại đăng nhập
+            Back to login
           </Link>
         </>
       )}

@@ -8,19 +8,19 @@ def send_verification_email(to_email: str, token: str) -> None:
     verify_url = f"{settings.frontend_url}/verify-email?token={token}"
 
     message = EmailMessage()
-    message["Subject"] = "Xác nhận tài khoản của bạn"
+    message["Subject"] = "Verify your account"
     message["From"] = settings.email_from
     message["To"] = to_email
     message.set_content(
-        f"Chào bạn,\n\nNhấn vào link sau để kích hoạt tài khoản:\n{verify_url}\n\n"
-        f"Link có hiệu lực trong {settings.email_verification_expire_minutes} phút."
+        f"Hi,\n\nClick the link below to activate your account:\n{verify_url}\n\n"
+        f"This link is valid for {settings.email_verification_expire_minutes} minutes."
     )
     message.add_alternative(
         f"""\
-        <p>Chào bạn,</p>
-        <p>Nhấn vào nút bên dưới để kích hoạt tài khoản:</p>
-        <p><a href="{verify_url}">Kích hoạt tài khoản</a></p>
-        <p>Link có hiệu lực trong {settings.email_verification_expire_minutes} phút.</p>
+        <p>Hi,</p>
+        <p>Click the button below to activate your account:</p>
+        <p><a href="{verify_url}">Activate account</a></p>
+        <p>This link is valid for {settings.email_verification_expire_minutes} minutes.</p>
         """,
         subtype="html",
     )

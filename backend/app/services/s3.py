@@ -29,6 +29,19 @@ def upload_image(file: UploadFile, folder: str) -> str:
     return key
 
 
+def upload_bytes(data: bytes, folder: str, ext: str, content_type: str) -> str:
+    key = f"{folder}/{uuid.uuid4()}.{ext}"
+
+    _s3_client.put_object(
+        Bucket=settings.s3_bucket_name,
+        Key=key,
+        Body=data,
+        ContentType=content_type,
+    )
+
+    return key
+
+
 def get_presigned_url(key: str, expires_in: int = 3600) -> str:
     return _s3_client.generate_presigned_url(
         "get_object",
@@ -37,5 +50,9 @@ def get_presigned_url(key: str, expires_in: int = 3600) -> str:
     )
 
 
-def delete_image(key: str) -> None:
+def delete_object(key: str) -> None:
     _s3_client.delete_object(Bucket=settings.s3_bucket_name, Key=key)
+
+
+def delete_image(key: str) -> None:
+    delete_object(key)
