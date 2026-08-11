@@ -10,7 +10,7 @@ import VerifyEmail from './pages/VerifyEmail'
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/profile-phunguyen">
       <AuthProvider>
         <div className="min-h-screen bg-earth-50">
           <Navbar />
