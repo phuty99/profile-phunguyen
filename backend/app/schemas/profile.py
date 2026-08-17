@@ -19,6 +19,21 @@ class EducationItem(BaseModel):
     description: str = ""
 
 
+class ProjectItem(BaseModel):
+    title: str = ""
+    description: str = ""
+    tech_stack: str = ""
+    demo_url: str = ""
+    github_url: str = ""
+
+
+class ProjectResponse(ProjectItem):
+    id: str
+    thumbnail_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class ExperienceResponse(ExperienceItem):
     id: str
 
@@ -93,5 +108,6 @@ class ProfileResponse(BaseModel):
     images: list[ProfileImageResponse] = []
     experiences: list[ExperienceResponse] = []
     educations: list[EducationResponse] = []
+    projects: list[ProjectResponse] = []
 
     model_config = {"from_attributes": True}

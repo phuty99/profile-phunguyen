@@ -114,6 +114,51 @@ export default function CvView({ profile }) {
           </section>
         )}
 
+        {profile.projects.length > 0 && (
+          <section>
+            <h2 className="text-lg font-semibold text-earth-800 border-b border-earth-200 pb-2 mb-3">Projects</h2>
+            <div className="grid sm:grid-cols-2 gap-5">
+              {profile.projects.map((proj) => {
+                const tech = splitTags(proj.tech_stack)
+                return (
+                  <div key={proj.id} className="border border-earth-200 rounded-lg overflow-hidden flex flex-col">
+                    {proj.thumbnail_url && (
+                      <img src={proj.thumbnail_url} alt="" className="w-full h-36 object-cover" />
+                    )}
+                    <div className="p-4 flex flex-col gap-2 flex-1">
+                      <p className="font-medium text-earth-800">{proj.title}</p>
+                      {proj.description && (
+                        <p className="text-earth-700 text-sm whitespace-pre-line">{proj.description}</p>
+                      )}
+                      {tech.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {tech.map((t, i) => (
+                            <span key={i} className="bg-earth-100 text-earth-800 text-xs px-2 py-0.5 rounded-full">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-4 mt-auto pt-2 text-sm">
+                        {proj.demo_url && (
+                          <a href={proj.demo_url} target="_blank" rel="noopener noreferrer" className="text-fire-600 hover:text-fire-700 font-medium">
+                            Live demo
+                          </a>
+                        )}
+                        {proj.github_url && (
+                          <a href={proj.github_url} target="_blank" rel="noopener noreferrer" className="text-fire-600 hover:text-fire-700 font-medium">
+                            Source
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         {skills.length > 0 && (
           <section>
             <h2 className="text-lg font-semibold text-earth-800 border-b border-earth-200 pb-2 mb-3">Skills</h2>

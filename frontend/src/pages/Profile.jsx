@@ -4,6 +4,7 @@ import CvView from '../components/CvView'
 
 const emptyExperience = { title: '', company: '', start_date: '', end_date: '', description: '' }
 const emptyEducation = { school: '', degree: '', start_date: '', end_date: '', description: '' }
+const emptyProject = { title: '', description: '', tech_stack: '', demo_url: '', github_url: '' }
 
 const scalarFields = (data) => ({
   full_name: data.full_name || '',
@@ -25,6 +26,12 @@ export default function Profile() {
   const [form, setForm] = useState(null)
   const [experiences, setExperiences] = useState([])
   const [educations, setEducations] = useState([])
+  const [projects, setProjects] = useState([])
+  const [projectFiles, setProjectFiles] = useState({})
+  const [newProject, setNewProject] = useState({ ...emptyProject })
+  const [newProjectFile, setNewProjectFile] = useState(null)
+  const [savingProjectId, setSavingProjectId] = useState(null)
+  const [addingProject, setAddingProject] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [scanning, setScanning] = useState(false)
@@ -36,6 +43,7 @@ export default function Profile() {
     setForm(scalarFields(data))
     setExperiences(data.experiences.length ? data.experiences : [])
     setEducations(data.educations.length ? data.educations : [])
+    setProjects(data.projects)
     setMode(data.full_name ? 'view' : 'edit')
   }
 
@@ -47,6 +55,7 @@ export default function Profile() {
     setForm(scalarFields(profile))
     setExperiences(profile.experiences.length ? profile.experiences : [])
     setEducations(profile.educations.length ? profile.educations : [])
+    setProjects(profile.projects)
     setMode('edit')
   }
 
@@ -104,6 +113,58 @@ export default function Profile() {
   const handleDeleteImage = async (imageId) => {
     const { data } = await apiClient.delete(`/profile/me/images/${imageId}`)
     setProfile(data)
+  }
+
+  const handleAddProject = async (e) => {
+    e.preventDefault()
+    setAddingProject(true)
+    setError('')
+    try {
+      const formData = new FormData()
+      Object.entries(newProject).forEach(([key, value]) => formData.append(key, value))
+      if (newProjectFile) formData.append('thumbnail', newProjectFile)
+      const { data } = await apiClient.post('/profile/me/projects', formData)
+      setProfile(data)
+      setProjects(data.projects)
+      setNewProject({ ...emptyProject })
+      setNewProjectFile(null)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not add project')
+    } finally {
+      setAddingProject(false)
+    }
+  }
+
+  const handleSaveProject = async (projectId) => {
+    const proj = projects.find((p) => p.id === projectId)
+    if (!proj) return
+    setSavingProjectId(projectId)
+    setError('')
+    try {
+      const formData = new FormData()
+      for (const key of ['title', 'description', 'tech_stack', 'demo_url', 'github_url']) {
+        formData.append(key, proj[key])
+      }
+      if (projectFiles[projectId]) formData.append('thumbnail', projectFiles[projectId])
+      const { data } = await apiClient.put(`/profile/me/projects/${projectId}`, formData)
+      setProfile(data)
+      setProjects(data.projects)
+      setProjectFiles((prev) => {
+        const next = { ...prev }
+        delete next[projectId]
+        return next
+      })
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not save project')
+    } finally {
+      setSavingProjectId(null)
+    }
+  }
+
+  const handleDeleteProject = async (projectId) => {
+    const { data } = await apiClient.delete(`/profile/me/projects/${projectId}`)
+    setProfile(data)
+    setProjects(data.projects)
   }
 
   const handleCvScan = async (e) => {
@@ -412,6 +473,147 @@ export default function Profile() {
           )}
         </div>
       </form>
+
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-earth-800 mb-3">Projects</h2>
+        <div className="flex flex-col gap-4">
+          {projects.map((proj) => (
+            <div key={proj.id} className="border border-earth-200 rounded-md p-3 flex flex-col gap-2">
+              <div className="flex gap-3">
+                <img
+                  src={
+                    projectFiles[proj.id]
+                      ? URL.createObjectURL(projectFiles[proj.id])
+                      : proj.thumbnail_url || 'https://placehold.co/96x64?text=+'
+                  }
+                  alt=""
+                  className="w-24 h-16 object-cover rounded-md border border-earth-200 shrink-0"
+                />
+                <label className="cursor-pointer text-xs bg-earth-100 hover:bg-earth-200 text-earth-800 px-2 py-1 rounded-md self-start">
+                  Change image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setProjectFiles((prev) => ({ ...prev, [proj.id]: e.target.files[0] }))}
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Title"
+                  value={proj.title}
+                  onChange={(e) => setProjects(projects.map((p) => (p.id === proj.id ? { ...p, title: e.target.value } : p)))}
+                  className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+                />
+                <input
+                  type="text"
+                  placeholder="Tech stack, comma separated"
+                  value={proj.tech_stack}
+                  onChange={(e) => setProjects(projects.map((p) => (p.id === proj.id ? { ...p, tech_stack: e.target.value } : p)))}
+                  className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+                />
+                <input
+                  type="text"
+                  placeholder="Demo URL"
+                  value={proj.demo_url}
+                  onChange={(e) => setProjects(projects.map((p) => (p.id === proj.id ? { ...p, demo_url: e.target.value } : p)))}
+                  className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+                />
+                <input
+                  type="text"
+                  placeholder="GitHub URL"
+                  value={proj.github_url}
+                  onChange={(e) => setProjects(projects.map((p) => (p.id === proj.id ? { ...p, github_url: e.target.value } : p)))}
+                  className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+                />
+              </div>
+              <textarea
+                placeholder="Description"
+                value={proj.description}
+                onChange={(e) => setProjects(projects.map((p) => (p.id === proj.id ? { ...p, description: e.target.value } : p)))}
+                rows={2}
+                className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSaveProject(proj.id)}
+                  disabled={savingProjectId === proj.id}
+                  className="text-sm bg-earth-100 hover:bg-earth-200 text-earth-800 px-3 py-1.5 rounded-md self-start"
+                >
+                  {savingProjectId === proj.id ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteProject(proj.id)}
+                  className="text-fire-600 text-sm self-start"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <form onSubmit={handleAddProject} className="border border-dashed border-earth-300 rounded-md p-3 flex flex-col gap-2">
+            <p className="text-sm font-medium text-earth-700">Add a project</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                placeholder="Title"
+                value={newProject.title}
+                onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
+                className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+              />
+              <input
+                type="text"
+                placeholder="Tech stack, comma separated"
+                value={newProject.tech_stack}
+                onChange={(e) => setNewProject({ ...newProject, tech_stack: e.target.value })}
+                className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+              />
+              <input
+                type="text"
+                placeholder="Demo URL"
+                value={newProject.demo_url}
+                onChange={(e) => setNewProject({ ...newProject, demo_url: e.target.value })}
+                className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+              />
+              <input
+                type="text"
+                placeholder="GitHub URL"
+                value={newProject.github_url}
+                onChange={(e) => setNewProject({ ...newProject, github_url: e.target.value })}
+                className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+              />
+            </div>
+            <textarea
+              placeholder="Description"
+              value={newProject.description}
+              onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+              rows={2}
+              className="border border-earth-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-fire-500"
+            />
+            <label className="cursor-pointer text-xs bg-earth-100 hover:bg-earth-200 text-earth-800 px-2 py-1 rounded-md self-start">
+              {newProjectFile ? newProjectFile.name : 'Choose thumbnail'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setNewProjectFile(e.target.files[0])}
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={addingProject}
+              className="text-sm bg-fire-600 hover:bg-fire-700 text-white px-3 py-1.5 rounded-md self-start"
+            >
+              {addingProject ? 'Adding...' : '+ Add project'}
+            </button>
+          </form>
+        </div>
+      </div>
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-3">
