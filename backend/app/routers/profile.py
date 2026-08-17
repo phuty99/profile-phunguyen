@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.db.database import get_db
-from app.models.profile import Education, Experience, Profile, ProfileImage
+from app.models.profile import Education, Experience, Profile, ProfileImage, Project
 from app.models.user import User
 from app.schemas.profile import (
     CvScanResponse,
@@ -14,6 +14,7 @@ from app.schemas.profile import (
     ProfileImageResponse,
     ProfileResponse,
     ProfileUpdateRequest,
+    ProjectResponse,
 )
 from app.services.cv_parser import extract_markdown, parse_cv
 from app.services.s3 import delete_image, delete_object, get_presigned_url, upload_bytes, upload_image
@@ -65,6 +66,18 @@ def _serialize(profile: Profile) -> ProfileResponse:
             )
             for edu in profile.educations
         ],
+        projects=[
+            ProjectResponse(
+                id=str(proj.id),
+                title=proj.title,
+                description=proj.description,
+                tech_stack=proj.tech_stack,
+                demo_url=proj.demo_url,
+                github_url=proj.github_url,
+                thumbnail_url=get_presigned_url(proj.thumbnail_s3_key) if proj.thumbnail_s3_key else None,
+            )
+            for proj in profile.projects
+        ],
     )
 
 
@@ -114,6 +127,90 @@ def replace_educations(
     db.flush()
     for order, item in enumerate(payload.items):
         db.add(Education(profile_id=profile.id, sort_order=order, **item.model_dump()))
+    db.commit()
+    db.refresh(profile)
+    return _serialize(profile)
+
+
+@router.post("/me/projects", response_model=ProfileResponse)
+def create_project(
+    title: str = Form(""),
+    description: str = Form(""),
+    tech_stack: str = Form(""),
+    demo_url: str = Form(""),
+    github_url: str = Form(""),
+    thumbnail: UploadFile | None = File(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = current_user.profile
+    thumbnail_key = upload_image(thumbnail, folder=f"projects/{current_user.id}") if thumbnail else None
+    sort_order = len(profile.projects)
+    db.add(
+        Project(
+            profile_id=profile.id,
+            title=title,
+            description=description,
+            tech_stack=tech_stack,
+            demo_url=demo_url,
+            github_url=github_url,
+            thumbnail_s3_key=thumbnail_key,
+            sort_order=sort_order,
+        )
+    )
+    db.commit()
+    db.refresh(profile)
+    return _serialize(profile)
+
+
+@router.put("/me/projects/{project_id}", response_model=ProfileResponse)
+def update_project(
+    project_id: str,
+    title: str = Form(""),
+    description: str = Form(""),
+    tech_stack: str = Form(""),
+    demo_url: str = Form(""),
+    github_url: str = Form(""),
+    thumbnail: UploadFile | None = File(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = current_user.profile
+    project = db.get(Project, project_id)
+    if not project or project.profile_id != profile.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    project.title = title
+    project.description = description
+    project.tech_stack = tech_stack
+    project.demo_url = demo_url
+    project.github_url = github_url
+
+    if thumbnail:
+        old_key = project.thumbnail_s3_key
+        project.thumbnail_s3_key = upload_image(thumbnail, folder=f"projects/{current_user.id}")
+        if old_key:
+            delete_image(old_key)
+
+    db.commit()
+    db.refresh(profile)
+    return _serialize(profile)
+
+
+@router.delete("/me/projects/{project_id}", response_model=ProfileResponse)
+def delete_project(
+    project_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = current_user.profile
+    project = db.get(Project, project_id)
+    if not project or project.profile_id != profile.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    if project.thumbnail_s3_key:
+        delete_image(project.thumbnail_s3_key)
+    db.delete(project)
     db.commit()
     db.refresh(profile)
     return _serialize(profile)

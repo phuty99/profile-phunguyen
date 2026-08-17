@@ -44,6 +44,9 @@ class Profile(Base):
     educations: Mapped[list["Education"]] = relationship(
         back_populates="profile", cascade="all, delete-orphan", order_by="Education.sort_order"
     )
+    projects: Mapped[list["Project"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan", order_by="Project.sort_order"
+    )
 
 
 class ProfileImage(Base):
@@ -85,3 +88,20 @@ class Education(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
     profile: Mapped["Profile"] = relationship(back_populates="educations")
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String, default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    tech_stack: Mapped[str] = mapped_column(Text, default="")
+    demo_url: Mapped[str] = mapped_column(String, default="")
+    github_url: Mapped[str] = mapped_column(String, default="")
+    thumbnail_s3_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    profile: Mapped["Profile"] = relationship(back_populates="projects")
