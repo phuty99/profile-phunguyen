@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -16,7 +18,7 @@ from app.schemas.profile import (
     ProfileUpdateRequest,
     ProjectResponse,
 )
-from app.services.cv_parser import extract_markdown, parse_cv
+from app.services.cv_parser import extract_markdown, parse_cv, parse_cv_with_gemini
 from app.services.s3 import delete_image, delete_object, get_presigned_url, upload_bytes, upload_image
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -233,6 +235,12 @@ def scan_cv(
     if not markdown.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not extract text from this PDF")
 
+    try:
+        parsed = parse_cv_with_gemini(markdown)
+    except Exception:
+        logging.exception("Gemini CV parsing failed, falling back to local parser")
+        parsed = parse_cv(markdown)
+
     profile = current_user.profile
     old_key = profile.cv_s3_key
     profile.cv_s3_key = upload_bytes(contents, folder=f"cv/{current_user.id}", ext="pdf", content_type="application/pdf")
@@ -240,7 +248,7 @@ def scan_cv(
     if old_key:
         delete_object(old_key)
 
-    return CvScanResponse(**parse_cv(markdown))
+    return CvScanResponse(**parsed)
 
 
 @router.get("/{profile_id}", response_model=ProfileResponse)
