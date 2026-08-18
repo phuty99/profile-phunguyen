@@ -1,12 +1,16 @@
 import json
 import logging
 import re
+import time
 
 import pymupdf
 import pymupdf4llm
 import requests
 
 from app.core.config import settings
+
+GEMINI_MAX_RETRIES = 3
+GEMINI_RETRY_BACKOFF_SECONDS = 2
 
 DATE_RANGE = re.compile(
     r"(?P<start>(?:0?[1-9]|1[0-2])[/-]\d{4}|[A-Za-z]{3,9}\.?\s+\d{4}|\d{4})"
@@ -278,23 +282,36 @@ def parse_cv_with_deepseek(markdown: str) -> dict:
 
 
 def parse_cv_with_gemini(markdown: str) -> dict:
-    logging.info("Parsing CV with Gemini API")
     if not settings.gemini_api_key:
         raise RuntimeError("Gemini API key is not configured")
 
-    response = requests.post(
-        f"{settings.gemini_api_base}/v1beta/models/{settings.gemini_model}:generateContent",
-        params={"key": settings.gemini_api_key},
-        json={
-            "system_instruction": {"parts": [{"text": LLM_SYSTEM_PROMPT}]},
-            "contents": [{"role": "user", "parts": [{"text": markdown}]}],
-            "generationConfig": {"responseMimeType": "application/json", "temperature": 0},
-        },
-        timeout=30,
-    )
-    response.raise_for_status()
-    content = response.json()["candidates"][0]["content"]["parts"][0]["text"]
-    return _normalize_llm_result(json.loads(content))
+    last_error: Exception | None = None
+    for attempt in range(1, GEMINI_MAX_RETRIES + 1):
+        logging.info("Parsing CV with Gemini API (attempt %d/%d)", attempt, GEMINI_MAX_RETRIES)
+        try:
+            response = requests.post(
+                f"{settings.gemini_api_base}/v1beta/models/{settings.gemini_model}:generateContent",
+                params={"key": settings.gemini_api_key},
+                json={
+                    "system_instruction": {"parts": [{"text": LLM_SYSTEM_PROMPT}]},
+                    "contents": [{"role": "user", "parts": [{"text": markdown}]}],
+                    "generationConfig": {"responseMimeType": "application/json", "temperature": 0},
+                },
+                timeout=30,
+            )
+            if response.status_code in (429, 500, 503) and attempt < GEMINI_MAX_RETRIES:
+                logging.warning("Gemini API returned %d, retrying...", response.status_code)
+                time.sleep(GEMINI_RETRY_BACKOFF_SECONDS * attempt)
+                continue
+            response.raise_for_status()
+            content = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+            return _normalize_llm_result(json.loads(content))
+        except requests.RequestException as e:
+            last_error = e
+            if attempt < GEMINI_MAX_RETRIES:
+                time.sleep(GEMINI_RETRY_BACKOFF_SECONDS * attempt)
+
+    raise last_error or RuntimeError("Gemini API failed after retries")
 
 
 def parse_cv(markdown: str) -> dict:
