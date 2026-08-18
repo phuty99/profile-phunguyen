@@ -1,7 +1,12 @@
+import json
+import logging
 import re
 
 import pymupdf
 import pymupdf4llm
+import requests
+
+from app.core.config import settings
 
 DATE_RANGE = re.compile(
     r"(?P<start>(?:0?[1-9]|1[0-2])[/-]\d{4}|[A-Za-z]{3,9}\.?\s+\d{4}|\d{4})"
@@ -185,7 +190,115 @@ def _split_entries(lines: list[str]) -> list[dict[str, str]]:
     return _split_by_dates_fallback(lines)
 
 
+CV_JSON_SCHEMA_HINT = """{
+  "full_name": "",
+  "headline": "",
+  "bio": "",
+  "phone": "",
+  "website_url": "",
+  "linkedin_url": "",
+  "github_url": "",
+  "skills": "comma-separated list",
+  "interests": "comma-separated list",
+  "experiences": [
+    {"title": "", "company": "", "start_date": "", "end_date": "", "description": ""}
+  ],
+  "educations": [
+    {"school": "", "degree": "", "start_date": "", "end_date": "", "description": ""}
+  ]
+}"""
+
+LLM_SCALAR_FIELDS = (
+    "full_name",
+    "headline",
+    "bio",
+    "phone",
+    "website_url",
+    "linkedin_url",
+    "github_url",
+    "skills",
+    "interests",
+)
+
+LLM_SYSTEM_PROMPT = (
+    "You extract structured resume data from CV text. "
+    "Reply with a single JSON object matching exactly this shape, "
+    "leaving fields as empty string/list when not found in the text:\n"
+    f"{CV_JSON_SCHEMA_HINT}"
+)
+
+
+def _normalize_llm_result(data: dict) -> dict:
+    result = {field: data.get(field, "") or "" for field in LLM_SCALAR_FIELDS}
+    result["experiences"] = [
+        {
+            "title": e.get("title", ""),
+            "company": e.get("company", ""),
+            "start_date": e.get("start_date", ""),
+            "end_date": e.get("end_date", ""),
+            "description": e.get("description", ""),
+        }
+        for e in data.get("experiences", [])
+    ]
+    result["educations"] = [
+        {
+            "school": e.get("school", ""),
+            "degree": e.get("degree", ""),
+            "start_date": e.get("start_date", ""),
+            "end_date": e.get("end_date", ""),
+            "description": e.get("description", ""),
+        }
+        for e in data.get("educations", [])
+    ]
+    return result
+
+
+def parse_cv_with_deepseek(markdown: str) -> dict:
+    logging.info("Parsing CV with DeepSeek API")
+    if not settings.deepseek_api_key:
+        raise RuntimeError("DeepSeek API key is not configured")
+
+    response = requests.post(
+        f"{settings.deepseek_api_base}/chat/completions",
+        headers={"Authorization": f"Bearer {settings.deepseek_api_key}"},
+        json={
+            "model": "deepseek-chat",
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": LLM_SYSTEM_PROMPT},
+                {"role": "user", "content": markdown},
+            ],
+            "temperature": 0,
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    content = response.json()["choices"][0]["message"]["content"]
+    return _normalize_llm_result(json.loads(content))
+
+
+def parse_cv_with_gemini(markdown: str) -> dict:
+    logging.info("Parsing CV with Gemini API")
+    if not settings.gemini_api_key:
+        raise RuntimeError("Gemini API key is not configured")
+
+    response = requests.post(
+        f"{settings.gemini_api_base}/v1beta/models/{settings.gemini_model}:generateContent",
+        params={"key": settings.gemini_api_key},
+        json={
+            "system_instruction": {"parts": [{"text": LLM_SYSTEM_PROMPT}]},
+            "contents": [{"role": "user", "parts": [{"text": markdown}]}],
+            "generationConfig": {"responseMimeType": "application/json", "temperature": 0},
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    content = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    return _normalize_llm_result(json.loads(content))
+
+
 def parse_cv(markdown: str) -> dict:
+    logging.info("Parsing CV with local parser")
     lines = markdown.splitlines()
     headings = _parse_headings(lines)
 

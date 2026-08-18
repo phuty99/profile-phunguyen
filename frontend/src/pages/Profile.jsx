@@ -6,6 +6,22 @@ const emptyExperience = { title: '', company: '', start_date: '', end_date: '', 
 const emptyEducation = { school: '', degree: '', start_date: '', end_date: '', description: '' }
 const emptyProject = { title: '', description: '', tech_stack: '', demo_url: '', github_url: '' }
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+const MAX_CV_SIZE_BYTES = 5 * 1024 * 1024
+
+const validateImageFile = (file) => {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return 'Please choose a JPEG, PNG, WEBP, or GIF image.'
+  if (file.size > MAX_IMAGE_SIZE_BYTES) return 'Image is too large (max 5MB).'
+  return ''
+}
+
+const validateCvFile = (file) => {
+  if (file.type !== 'application/pdf') return 'Please choose a PDF file.'
+  if (file.size > MAX_CV_SIZE_BYTES) return 'File is too large (max 5MB).'
+  return ''
+}
+
 const scalarFields = (data) => ({
   full_name: data.full_name || '',
   headline: data.headline || '',
@@ -51,6 +67,12 @@ export default function Profile() {
     loadProfile()
   }, [])
 
+  useEffect(() => {
+    if (!error) return
+    const timer = setTimeout(() => setError(''), 6000)
+    return () => clearTimeout(timer)
+  }, [error])
+
   const startEdit = () => {
     setForm(scalarFields(profile))
     setExperiences(profile.experiences.length ? profile.experiences : [])
@@ -79,6 +101,12 @@ export default function Profile() {
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      setError(validationError)
+      e.target.value = ''
+      return
+    }
     setUploading(true)
     setError('')
     try {
@@ -96,6 +124,12 @@ export default function Profile() {
   const handleGalleryUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      setError(validationError)
+      e.target.value = ''
+      return
+    }
     setUploading(true)
     setError('')
     try {
@@ -117,6 +151,13 @@ export default function Profile() {
 
   const handleAddProject = async (e) => {
     e.preventDefault()
+    if (newProjectFile) {
+      const validationError = validateImageFile(newProjectFile)
+      if (validationError) {
+        setError(validationError)
+        return
+      }
+    }
     setAddingProject(true)
     setError('')
     try {
@@ -138,6 +179,13 @@ export default function Profile() {
   const handleSaveProject = async (projectId) => {
     const proj = projects.find((p) => p.id === projectId)
     if (!proj) return
+    if (projectFiles[projectId]) {
+      const validationError = validateImageFile(projectFiles[projectId])
+      if (validationError) {
+        setError(validationError)
+        return
+      }
+    }
     setSavingProjectId(projectId)
     setError('')
     try {
@@ -167,9 +215,39 @@ export default function Profile() {
     setProjects(data.projects)
   }
 
+  const handleNewProjectFileChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      setError(validationError)
+      e.target.value = ''
+      return
+    }
+    setNewProjectFile(file)
+  }
+
+  const handleProjectFileChange = (projectId, e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      setError(validationError)
+      e.target.value = ''
+      return
+    }
+    setProjectFiles((prev) => ({ ...prev, [projectId]: file }))
+  }
+
   const handleCvScan = async (e) => {
     const file = e.target.files[0]
     if (!file) return
+    const validationError = validateCvFile(file)
+    if (validationError) {
+      setError(validationError)
+      e.target.value = ''
+      return
+    }
     setScanning(true)
     setError('')
     try {
@@ -198,10 +276,40 @@ export default function Profile() {
   if (!profile || !form) return <p className="text-center mt-16 text-earth-700">Loading...</p>
 
   const publicUrl = `${window.location.origin}/u/${profile.id}`
+  const busy = saving || uploading || scanning || addingProject || Boolean(savingProjectId)
+
+  const loadingOverlay = busy && (
+    <div className="fixed inset-0 bg-earth-900/40 z-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+        <svg className="animate-spin h-5 w-5 text-fire-600" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        <span className="text-earth-800 text-sm font-medium">Please wait...</span>
+      </div>
+    </div>
+  )
+
+  const errorToast = error && (
+    <div className="fixed top-4 right-4 z-50 max-w-sm bg-white border border-fire-300 rounded-lg shadow-lg p-4 flex items-start gap-3">
+      <span className="text-fire-600 text-lg leading-none">⚠</span>
+      <p className="text-sm text-earth-800 flex-1">{error}</p>
+      <button
+        type="button"
+        onClick={() => setError('')}
+        className="text-earth-400 hover:text-earth-600 text-sm leading-none"
+        aria-label="Dismiss"
+      >
+        ✕
+      </button>
+    </div>
+  )
 
   if (mode === 'view') {
     return (
       <div className="mt-10 mb-10 px-4">
+        {loadingOverlay}
+        {errorToast}
         <div className="max-w-3xl mx-auto flex justify-between items-center mb-4">
           {profile.is_public ? (
             <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-fire-600 hover:text-fire-700 font-medium truncate">
@@ -225,6 +333,8 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto mt-10 mb-10 p-8 bg-white rounded-xl shadow-sm border border-earth-200">
+      {loadingOverlay}
+      {errorToast}
       <div className="flex items-center gap-4 mb-6">
         <img
           src={profile.avatar_url || 'https://placehold.co/96x96?text=?'}
@@ -453,7 +563,6 @@ export default function Profile() {
           Make my profile public (shareable at {publicUrl})
         </label>
 
-        {error && <p className="text-fire-600 text-sm">{error}</p>}
         <div className="flex gap-3">
           <button
             type="submit"
@@ -495,7 +604,7 @@ export default function Profile() {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => setProjectFiles((prev) => ({ ...prev, [proj.id]: e.target.files[0] }))}
+                    onChange={(e) => handleProjectFileChange(proj.id, e)}
                   />
                 </label>
               </div>
@@ -601,7 +710,7 @@ export default function Profile() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => setNewProjectFile(e.target.files[0])}
+                onChange={handleNewProjectFileChange}
               />
             </label>
             <button

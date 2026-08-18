@@ -29,5 +29,14 @@ class Settings(BaseSettings):
     smtp_password: str
     email_from: str
 
+    # DeepSeek (optional, used to improve CV parsing when set)
+    deepseek_api_key: str = ""
+    deepseek_api_base: str = "https://api.deepseek.com"
+
+    # Gemini (optional, used to improve CV parsing when set)
+    gemini_api_key: str = ""
+    gemini_api_base: str = "https://generativelanguage.googleapis.com"
+    gemini_model: str = "gemini-flash-latest"
+
 
 settings = Settings()
