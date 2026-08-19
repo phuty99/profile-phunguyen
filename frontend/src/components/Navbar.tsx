@@ -1,8 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Navbar() {
   const { isAuthenticated, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -11,8 +13,8 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-earth-800 text-earth-50 px-6 py-4 flex items-center justify-between">
-      <Link to="/" className="font-semibold text-lg text-earth-100">
+    <nav className="bg-earth-950 text-white px-6 py-4 flex items-center justify-between">
+      <Link to="/" className="font-semibold text-lg text-white">
         My Profile
       </Link>
       <div className="flex gap-4 items-center">
@@ -42,6 +44,14 @@ export default function Navbar() {
             </Link>
           </>
         )}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label="Toggle dark mode"
+          className="text-lg leading-none rounded-full w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20"
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </div>
     </nav>
   )

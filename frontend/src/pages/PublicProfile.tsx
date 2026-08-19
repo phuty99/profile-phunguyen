@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import apiClient from '../api/client'
 import CvView from '../components/CvView'
+import type { Profile } from '../types'
 
 export default function PublicProfile() {
   const { profileId } = useParams()
-  const [profile, setProfile] = useState(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
