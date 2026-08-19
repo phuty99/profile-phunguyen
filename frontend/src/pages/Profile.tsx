@@ -1,28 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import apiClient from '../api/client'
 import CvView from '../components/CvView'
+import type { Education, Experience, Profile as ProfileType, Project } from '../types'
 
-const emptyExperience = { title: '', company: '', start_date: '', end_date: '', description: '' }
-const emptyEducation = { school: '', degree: '', start_date: '', end_date: '', description: '' }
-const emptyProject = { title: '', description: '', tech_stack: '', demo_url: '', github_url: '' }
+type NewProject = Omit<Project, 'id' | 'thumbnail_url'>
+
+type ScalarForm = {
+  full_name: string
+  headline: string
+  bio: string
+  phone: string
+  location: string
+  website_url: string
+  linkedin_url: string
+  github_url: string
+  skills: string
+  interests: string
+  is_public: boolean
+}
+
+const emptyExperience: Experience = { title: '', company: '', start_date: '', end_date: '', description: '' }
+const emptyEducation: Education = { school: '', degree: '', start_date: '', end_date: '', description: '' }
+const emptyProject: NewProject = { title: '', description: '', tech_stack: '', demo_url: '', github_url: '' }
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
 const MAX_CV_SIZE_BYTES = 5 * 1024 * 1024
 
-const validateImageFile = (file) => {
+const validateImageFile = (file: File): string => {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return 'Please choose a JPEG, PNG, WEBP, or GIF image.'
   if (file.size > MAX_IMAGE_SIZE_BYTES) return 'Image is too large (max 5MB).'
   return ''
 }
 
-const validateCvFile = (file) => {
+const validateCvFile = (file: File): string => {
   if (file.type !== 'application/pdf') return 'Please choose a PDF file.'
   if (file.size > MAX_CV_SIZE_BYTES) return 'File is too large (max 5MB).'
   return ''
 }
 
-const scalarFields = (data) => ({
+const scalarFields = (data: ProfileType): ScalarForm => ({
   full_name: data.full_name || '',
   headline: data.headline || '',
   bio: data.bio || '',
@@ -37,16 +54,16 @@ const scalarFields = (data) => ({
 })
 
 export default function Profile() {
-  const [profile, setProfile] = useState(null)
-  const [mode, setMode] = useState('view')
-  const [form, setForm] = useState(null)
-  const [experiences, setExperiences] = useState([])
-  const [educations, setEducations] = useState([])
-  const [projects, setProjects] = useState([])
-  const [projectFiles, setProjectFiles] = useState({})
-  const [newProject, setNewProject] = useState({ ...emptyProject })
-  const [newProjectFile, setNewProjectFile] = useState(null)
-  const [savingProjectId, setSavingProjectId] = useState(null)
+  const [profile, setProfile] = useState<ProfileType | null>(null)
+  const [mode, setMode] = useState<'view' | 'edit'>('view')
+  const [form, setForm] = useState<ScalarForm | null>(null)
+  const [experiences, setExperiences] = useState<Experience[]>([])
+  const [educations, setEducations] = useState<Education[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectFiles, setProjectFiles] = useState<Record<string, File>>({})
+  const [newProject, setNewProject] = useState<NewProject>({ ...emptyProject })
+  const [newProjectFile, setNewProjectFile] = useState<File | null>(null)
+  const [savingProjectId, setSavingProjectId] = useState<string | null>(null)
   const [addingProject, setAddingProject] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -54,7 +71,7 @@ export default function Profile() {
   const [error, setError] = useState('')
 
   const loadProfile = async () => {
-    const { data } = await apiClient.get('/profile/me')
+    const { data } = await apiClient.get<ProfileType>('/profile/me')
     setProfile(data)
     setForm(scalarFields(data))
     setExperiences(data.experiences.length ? data.experiences : [])
@@ -74,6 +91,7 @@ export default function Profile() {
   }, [error])
 
   const startEdit = () => {
+    if (!profile) return
     setForm(scalarFields(profile))
     setExperiences(profile.experiences.length ? profile.experiences : [])
     setEducations(profile.educations.length ? profile.educations : [])
@@ -81,8 +99,9 @@ export default function Profile() {
     setMode('edit')
   }
 
-  const handleSave = async (e) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault()
+    if (!form) return
     setSaving(true)
     setError('')
     try {
@@ -91,15 +110,15 @@ export default function Profile() {
       const { data } = await apiClient.put('/profile/me/educations', { items: educations })
       setProfile(data)
       setMode('view')
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || 'Update failed')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files[0]
+  const handleAvatarUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
     if (!file) return
     const validationError = validateImageFile(file)
     if (validationError) {
@@ -114,15 +133,15 @@ export default function Profile() {
       formData.append('file', file)
       const { data } = await apiClient.post('/profile/me/avatar', formData)
       setProfile(data)
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || 'Upload failed')
     } finally {
       setUploading(false)
     }
   }
 
-  const handleGalleryUpload = async (e) => {
-    const file = e.target.files[0]
+  const handleGalleryUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
     if (!file) return
     const validationError = validateImageFile(file)
     if (validationError) {
@@ -137,19 +156,19 @@ export default function Profile() {
       formData.append('file', file)
       const { data } = await apiClient.post('/profile/me/images', formData)
       setProfile(data)
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || 'Upload failed')
     } finally {
       setUploading(false)
     }
   }
 
-  const handleDeleteImage = async (imageId) => {
+  const handleDeleteImage = async (imageId: string) => {
     const { data } = await apiClient.delete(`/profile/me/images/${imageId}`)
     setProfile(data)
   }
 
-  const handleAddProject = async (e) => {
+  const handleAddProject = async (e: FormEvent) => {
     e.preventDefault()
     if (newProjectFile) {
       const validationError = validateImageFile(newProjectFile)
@@ -169,14 +188,14 @@ export default function Profile() {
       setProjects(data.projects)
       setNewProject({ ...emptyProject })
       setNewProjectFile(null)
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || 'Could not add project')
     } finally {
       setAddingProject(false)
     }
   }
 
-  const handleSaveProject = async (projectId) => {
+  const handleSaveProject = async (projectId: string) => {
     const proj = projects.find((p) => p.id === projectId)
     if (!proj) return
     if (projectFiles[projectId]) {
@@ -190,7 +209,7 @@ export default function Profile() {
     setError('')
     try {
       const formData = new FormData()
-      for (const key of ['title', 'description', 'tech_stack', 'demo_url', 'github_url']) {
+      for (const key of ['title', 'description', 'tech_stack', 'demo_url', 'github_url'] as const) {
         formData.append(key, proj[key])
       }
       if (projectFiles[projectId]) formData.append('thumbnail', projectFiles[projectId])
@@ -202,21 +221,21 @@ export default function Profile() {
         delete next[projectId]
         return next
       })
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || 'Could not save project')
     } finally {
       setSavingProjectId(null)
     }
   }
 
-  const handleDeleteProject = async (projectId) => {
+  const handleDeleteProject = async (projectId: string) => {
     const { data } = await apiClient.delete(`/profile/me/projects/${projectId}`)
     setProfile(data)
     setProjects(data.projects)
   }
 
-  const handleNewProjectFileChange = (e) => {
-    const file = e.target.files[0]
+  const handleNewProjectFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
     if (!file) return
     const validationError = validateImageFile(file)
     if (validationError) {
@@ -227,8 +246,8 @@ export default function Profile() {
     setNewProjectFile(file)
   }
 
-  const handleProjectFileChange = (projectId, e) => {
-    const file = e.target.files[0]
+  const handleProjectFileChange = (projectId: string, e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
     if (!file) return
     const validationError = validateImageFile(file)
     if (validationError) {
@@ -239,8 +258,8 @@ export default function Profile() {
     setProjectFiles((prev) => ({ ...prev, [projectId]: file }))
   }
 
-  const handleCvScan = async (e) => {
-    const file = e.target.files[0]
+  const handleCvScan = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
     if (!file) return
     const validationError = validateCvFile(file)
     if (validationError) {
@@ -255,8 +274,19 @@ export default function Profile() {
       formData.append('file', file)
       const { data } = await apiClient.post('/profile/me/cv/scan', formData)
       setForm((prev) => {
+        if (!prev) return prev
         const next = { ...prev }
-        for (const key of ['full_name', 'headline', 'bio', 'phone', 'website_url', 'linkedin_url', 'github_url', 'skills', 'interests']) {
+        for (const key of [
+          'full_name',
+          'headline',
+          'bio',
+          'phone',
+          'website_url',
+          'linkedin_url',
+          'github_url',
+          'skills',
+          'interests',
+        ] as const) {
           next[key] = data[key]
         }
         return next
@@ -265,7 +295,7 @@ export default function Profile() {
       setEducations(data.educations)
       const { data: freshProfile } = await apiClient.get('/profile/me')
       setProfile(freshProfile)
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || 'Could not scan this CV')
     } finally {
       setScanning(false)
@@ -280,7 +310,7 @@ export default function Profile() {
 
   const loadingOverlay = busy && (
     <div className="fixed inset-0 bg-earth-900/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
+      <div className="bg-white dark:bg-earth-100 rounded-lg px-6 py-4 shadow-lg flex items-center gap-3">
         <svg className="animate-spin h-5 w-5 text-fire-600" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -291,7 +321,7 @@ export default function Profile() {
   )
 
   const errorToast = error && (
-    <div className="fixed top-4 right-4 z-50 max-w-sm bg-white border border-fire-300 rounded-lg shadow-lg p-4 flex items-start gap-3">
+    <div className="fixed top-4 right-4 z-50 max-w-sm bg-white dark:bg-earth-100 border border-fire-300 rounded-lg shadow-lg p-4 flex items-start gap-3">
       <span className="text-fire-600 text-lg leading-none">⚠</span>
       <p className="text-sm text-earth-800 flex-1">{error}</p>
       <button
@@ -332,7 +362,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 mb-10 p-8 bg-white rounded-xl shadow-sm border border-earth-200">
+    <div className="max-w-2xl mx-auto mt-10 mb-10 p-8 bg-white dark:bg-earth-100 rounded-xl shadow-sm border border-earth-200">
       {loadingOverlay}
       {errorToast}
       <div className="flex items-center gap-4 mb-6">

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-earth-50: #fdf8f0;
   --color-earth-100: #faeed9;
@@ -11,10 +13,24 @@
   --color-earth-700: #8a4a20;
   --color-earth-800: #6b3a1e;
   --color-earth-900: #4a281a;
+  --color-earth-950: #2c1c10;
 
   --color-fire-500: #c2410c;
   --color-fire-600: #9a3412;
   --color-fire-700: #7c2d12;
+}
+
+.dark {
+  --color-earth-50: #1b140d;
+  --color-earth-100: #251c12;
+  --color-earth-200: #3a2c1c;
+  --color-earth-300: #4f3c26;
+  --color-earth-400: #7a5c3a;
+  --color-earth-500: #b98f5c;
+  --color-earth-600: #d4ad7c;
+  --color-earth-700: #e3c297;
+  --color-earth-800: #f0dcb9;
+  --color-earth-900: #fbf0de;
 }
 
 body {
@@ -22,4 +38,16 @@ body {
   background-color: var(--color-earth-50);
   color: var(--color-earth-900);
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+input,
+textarea {
+  background-color: var(--color-earth-50);
+  color: var(--color-earth-900);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-earth-400);
 }

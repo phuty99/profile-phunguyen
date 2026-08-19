@@ -1,11 +1,13 @@
-function splitTags(text) {
+import type { Profile } from '../types'
+
+function splitTags(text: string): string[] {
   return (text || '')
     .split(',')
     .map((t) => t.trim())
     .filter(Boolean)
 }
 
-export default function CvView({ profile }) {
+export default function CvView({ profile }: { profile: Profile }) {
   const skills = splitTags(profile.skills)
   const interests = splitTags(profile.interests)
   const contactLinks = [
@@ -14,10 +16,10 @@ export default function CvView({ profile }) {
     profile.website_url && { label: 'Website', href: profile.website_url },
     profile.linkedin_url && { label: 'LinkedIn', href: profile.linkedin_url },
     profile.github_url && { label: 'GitHub', href: profile.github_url },
-  ].filter(Boolean)
+  ].filter((link): link is { label: string; href: string | null } => Boolean(link))
 
   return (
-    <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-earth-200 overflow-hidden">
+    <div className="max-w-3xl mx-auto bg-white dark:bg-earth-100 rounded-xl shadow-sm border border-earth-200 overflow-hidden">
       <div className="bg-gradient-to-br from-earth-800 to-fire-700 text-white px-8 py-10 flex flex-col sm:flex-row items-center sm:items-end gap-6">
         <img
           src={profile.avatar_url || 'https://placehold.co/128x128?text=?'}

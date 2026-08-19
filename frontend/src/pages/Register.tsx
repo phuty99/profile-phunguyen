@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -10,21 +10,21 @@ export default function Register() {
   const [message, setMessage] = useState('')
   const { register } = useAuth()
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
     setMessage('')
     try {
       const msg = await register(email, password)
       setMessage(msg)
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed')
     }
   }
 
   if (message) {
     return (
-      <div className="max-w-sm mx-auto mt-16 p-8 bg-white rounded-xl shadow-sm border border-earth-200 text-center">
+      <div className="max-w-sm mx-auto mt-16 p-8 bg-white dark:bg-earth-100 rounded-xl shadow-sm border border-earth-200 text-center">
         <h1 className="text-2xl font-semibold text-earth-800 mb-4">Check your email</h1>
         <p className="text-earth-700">{message}</p>
       </div>
@@ -32,7 +32,7 @@ export default function Register() {
   }
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-8 bg-white rounded-xl shadow-sm border border-earth-200">
+    <div className="max-w-sm mx-auto mt-16 p-8 bg-white dark:bg-earth-100 rounded-xl shadow-sm border border-earth-200">
       <h1 className="text-2xl font-semibold text-earth-800 mb-6">Create account</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input

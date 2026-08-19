@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -10,19 +10,19 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
     try {
       await login(email, password)
       navigate('/profile')
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed')
     }
   }
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-8 bg-white rounded-xl shadow-sm border border-earth-200">
+    <div className="max-w-sm mx-auto mt-16 p-8 bg-white dark:bg-earth-100 rounded-xl shadow-sm border border-earth-200">
       <h1 className="text-2xl font-semibold text-earth-800 mb-6">Login</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input

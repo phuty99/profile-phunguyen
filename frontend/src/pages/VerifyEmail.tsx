@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
+type Status = 'verifying' | 'success' | 'error'
+
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const { verifyEmail } = useAuth()
   const navigate = useNavigate()
-  const [status, setStatus] = useState('verifying')
+  const [status, setStatus] = useState<Status>('verifying')
   const calledRef = useRef(false)
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function VerifyEmail() {
   }, [token, verifyEmail, navigate])
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-8 bg-white rounded-xl shadow-sm border border-earth-200 text-center">
+    <div className="max-w-sm mx-auto mt-16 p-8 bg-white dark:bg-earth-100 rounded-xl shadow-sm border border-earth-200 text-center">
       {status === 'verifying' && <p className="text-earth-700">Activating your account...</p>}
       {status === 'success' && <p className="text-earth-700">Account activated! Redirecting...</p>}
       {status === 'error' && (
