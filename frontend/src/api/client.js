@@ -12,4 +12,18 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      const loginUrl = `${import.meta.env.BASE_URL}login`
+      if (window.location.pathname !== loginUrl) {
+        window.location.href = loginUrl
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 export default apiClient
